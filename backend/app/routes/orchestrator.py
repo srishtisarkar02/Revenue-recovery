@@ -35,10 +35,6 @@ def run_recovery(
             detail="Recovery case not found.",
         )
 
-    # ---------------------------------------------------------
-    # Make sure the simulator knows about this payment.
-    # ---------------------------------------------------------
-
     try:
         simulator.get_payment(case.payment_id)
 
@@ -51,16 +47,10 @@ def run_recovery(
             currency=case.currency,
             failure_reason="network_error",
         )
-
-    # ---------------------------------------------------------
-    # Run the complete agent workflow.
-    # ---------------------------------------------------------
-
     orchestrator = RecoveryOrchestrator(
         db=db,
         simulator=simulator,
     )
-
     try:
         return orchestrator.run(case)
 
