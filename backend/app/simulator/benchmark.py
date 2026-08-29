@@ -77,10 +77,6 @@ def run_batch_benchmark(db: Session, count: int = 50) -> dict[str, Any]:
     2. Naive Baseline (Blindly retries all failures without diagnosis or safety)
     """
     dataset = generate_benchmark_dataset(count=count)
-
-    # -------------------------------------------------------------
-    # 1. Run AI Agent Workflow
-    # -------------------------------------------------------------
     ai_simulator = PaymentSimulator()
     for item in dataset:
         ai_simulator.add_payment(
@@ -155,9 +151,6 @@ def run_batch_benchmark(db: Session, count: int = 50) -> dict[str, Any]:
             "final_status": final_status,
         })
 
-    # -------------------------------------------------------------
-    # 2. Run Naive Baseline (Blind immediate retry on everything)
-    # -------------------------------------------------------------
     baseline_simulator = PaymentSimulator()
     for item in dataset:
         baseline_simulator.add_payment(
