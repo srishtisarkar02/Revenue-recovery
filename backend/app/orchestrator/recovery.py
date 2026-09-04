@@ -15,6 +15,7 @@ from app.policy.evaluator import (
     PolicyContext,
     evaluate_policy,
 )
+from app.policy.rules import BLOCKED_FAILURE_REASONS
 
 from app.services.context import (
     build_case_history,
@@ -180,28 +181,22 @@ class RecoveryOrchestrator:
             ),
         )
 
-        # --------------------------------------------------
-        # 6. Deterministic safety gate
-        # --------------------------------------------------
+        failure_category = payment.get("failure_category") or failure_reason
+        risk_flags = []
+        if failure_category in BLOCKED_FAILURE_REASONS or any(b in failure_reason.lower() for b in BLOCKED_FAILURE_REASONS):
+            risk_flags.append(failure_category if failure_category in BLOCKED_FAILURE_REASONS else "suspected_fraud")
 
         policy_result = evaluate_policy(
-            decision=(
-                ai_decision.decision
-            ),
+            decision=ai_decision.decision,
             context=PolicyContext(
                 amount=case.amount,
-                failure_reason=(
-                    failure_reason
-                ),
-                previous_recovery_attempts=(
-                    recovery_attempts
-                ),
-                previous_retry_attempts=(
-                    retry_count
-                ),
-                risk_flags=[],
+                failure_reason=failure_category,
+                previous_recovery_attempts=recovery_attempts,
+                previous_retry_attempts=retry_count,
+                risk_flags=risk_flags,
             ),
         )
+
 
         # --------------------------------------------------
         # 7. Policy rejection
@@ -439,4 +434,9 @@ class RecoveryOrchestrator:
             },
             "action": action_result,
             "verification": verification,
-        }
+            "customer_name": payment.get("customer_name"),
+            "customer_email": payment.get("customer_email"),
+            "failure_category": failure_category,
+            "failure_reason": failure_reason,
+        }
+

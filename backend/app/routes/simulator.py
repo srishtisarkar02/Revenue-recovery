@@ -42,4 +42,17 @@ def execute_benchmark(
     Executes a complete batch recovery simulation across N failed payments.
     Evaluates AI Agent vs. Naive Baseline and calculates measured ₹ recovered.
     """
-    return run_batch_benchmark(db=db, count=count)
+    return run_batch_benchmark(db=db, count=count)
+
+
+@router.get("/metrics")
+def get_benchmark_metrics(
+    count: int = Query(default=50, ge=5, le=100),
+    db: Session = Depends(get_db),
+):
+    """
+    Returns latest benchmark metrics and financial recovery summary.
+    """
+    res = run_batch_benchmark(db=db, count=count)
+    return res["summary"]
+

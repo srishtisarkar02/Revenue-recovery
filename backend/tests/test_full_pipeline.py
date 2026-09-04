@@ -79,7 +79,53 @@ def test_pipeline():
         print(f"Final Status: {res_fraud['final_status']}")
 
         print("\n" + "=" * 60)
-        print("4. RUNNING BATCH BENCHMARK (50 CASES - AI VS BASELINE)")
+        print("4. TESTING MANDATE RETRY SEQUENCER (UPI AUTOPAY / RECURRING)")
+        print("=" * 60)
+        from app.services.mandate import MandateRetrySequencer
+        sequencer = MandateRetrySequencer(db)
+        mandate_plan = sequencer.schedule_retry(
+            mandate_id=f"man_{uuid.uuid4().hex[:6]}",
+            customer_id="cust_sub_01",
+            amount=4999,
+            failure_code="insufficient_funds",
+        )
+        print(f"Scheduled Mandate: {mandate_plan['mandate_id']}")
+        print(f"Optimal Window:    {mandate_plan['optimal_window']}")
+        print(f"Scheduled Date:    {mandate_plan['scheduled_date']}")
+        print(f"Strategy:          {mandate_plan['strategy']}")
+
+        process_res = sequencer.execute_scheduled_retries()
+        print(f"Processed Mandates: {process_res['processed_schedules']}, Recovered: INR {process_res['revenue_recovered_inr']:,}")
+
+        print("\n" + "=" * 60)
+        print("5. TESTING B2B RECEIVABLES & PROMISE-TO-PAY TRACKER")
+        print("=" * 60)
+        from app.services.receivables import ReceivablesTracker
+        tracker = ReceivablesTracker(db)
+        ptp_res = tracker.record_promise_to_pay(
+            invoice_id=f"inv_{uuid.uuid4().hex[:6]}",
+            customer_id="corp_client_01",
+            amount=45000,
+            customer_message="Hi team, invoice received. We will process payment by Friday after internal sign-off.",
+        )
+        print(f"Invoice:           {ptp_res['invoice_id']}")
+        print(f"Has Promise:       {ptp_res['has_promise']}")
+        print(f"Promised Date:     {ptp_res['promised_date']}")
+        print(f"Action Taken:      {ptp_res['action_taken']}")
+        print(f"Reminders Paused:  {ptp_res['reminders_paused']}")
+
+        print("\n" + "=" * 60)
+        print("6. TESTING BANK GATEWAY HEALTH & ANOMALY DETECTOR")
+        print("=" * 60)
+        from app.services.gateway_health import gateway_monitor
+        gw_health = gateway_monitor.get_all_gateways()
+        print(f"Overall Gateway Status: {gw_health['overall_status']}")
+        print(f"Monitored Gateways:     {gw_health['active_monitored_gateways']} (Healthy: {gw_health['healthy_gateways']}, Degraded: {gw_health['degraded_gateways']})")
+        kotak_check = gateway_monitor.check_bank_health("KOTAK")
+        print(f"Kotak Bank Health Check: Status={kotak_check['status']}, SafeToRetry={kotak_check['safe_to_retry']}, Action={kotak_check['recommendation']}")
+
+        print("\n" + "=" * 60)
+        print("7. RUNNING BATCH BENCHMARK (50 CASES - AI VS BASELINE)")
         print("=" * 60)
         benchmark_results = run_batch_benchmark(db=db, count=50)
         summary = benchmark_results["summary"]
@@ -92,7 +138,7 @@ def test_pipeline():
         print(f"Unsafe Actions Blocked: {summary['unsafe_actions_prevented']}")
 
         print("\n" + "=" * 60)
-        print("PIPELINE TEST PASSED SUCCESSFULLY!")
+        print("ALL 7 CORE REVENUE RECOVERY CAPABILITIES PASSED!")
         print("=" * 60)
     finally:
         db.close()

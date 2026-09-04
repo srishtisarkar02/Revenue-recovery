@@ -20,15 +20,12 @@ class SimulatedPayment:
     status: PaymentStatus = "failed"
 
     retry_count: int = 0
+    failure_category: str | None = None
+    customer_name: str | None = None
+    customer_email: str | None = None
 
 
 class PaymentSimulator:
-    """
-    Deterministic payment simulator.
-
-    This lets us test recovery logic without touching real money.
-    """
-
     def __init__(self) -> None:
         self.payments: dict[str, SimulatedPayment] = {}
 
@@ -41,6 +38,9 @@ class PaymentSimulator:
         currency: str,
         failure_reason: str,
         status: PaymentStatus = "failed",
+        failure_category: str | None = None,
+        customer_name: str | None = None,
+        customer_email: str | None = None,
     ) -> SimulatedPayment:
 
         payment = SimulatedPayment(
@@ -50,6 +50,9 @@ class PaymentSimulator:
             currency=currency,
             failure_reason=failure_reason,
             status=status,
+            failure_category=failure_category,
+            customer_name=customer_name,
+            customer_email=customer_email,
         )
 
         self.payments[payment_id] = payment
@@ -74,9 +77,13 @@ class PaymentSimulator:
             "amount": payment.amount,
             "currency": payment.currency,
             "failure_reason": payment.failure_reason,
+            "failure_category": getattr(payment, "failure_category", None) or payment.failure_reason,
+            "customer_name": getattr(payment, "customer_name", None),
+            "customer_email": getattr(payment, "customer_email", None),
             "status": payment.status,
             "retry_count": payment.retry_count,
         }
+
 
     def retry_payment(
         self,

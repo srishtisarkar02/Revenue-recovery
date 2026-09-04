@@ -42,9 +42,11 @@ def list_cases(
 
 
 @router.get("/dashboard-summary")
+@router.get("/metrics")
 def get_dashboard_summary(
     db: Session = Depends(get_db),
 ):
+
     cases = db.query(RecoveryCase).all()
     total_cases = len(cases)
     total_at_risk = sum(c.amount for c in cases)
@@ -220,9 +222,40 @@ def send_message(
     )
 
     db.add(audit)
-    db.commit()
-
     return {
         "case_id": case.id,
         **result,
     }
+
+
+@router.get("/cases/{case_id}/detail")
+def get_case_detail(
+    case_id: int,
+    db: Session = Depends(get_db),
+):
+    case = db.query(RecoveryCase).filter(RecoveryCase.id == case_id).first()
+    if not case:
+        raise HTTPException(status_code=404, detail="Recovery case not found")
+
+    from app.orchestrator.audit import AgentActionLog
+    logs = (
+        db.query(AgentActionLog)
+        .filter(AgentActionLog.case_id == case_id)
+        .order_by(AgentActionLog.id.asc())
+        .all()
+    )
+
+    return {
+        "case": {
+            "id": case.id,
+            "customer_id": case.customer_id,
+            "payment_id": case.payment_id,
+            "amount": case.amount,
+            "currency": case.currency,
+            "status": case.status,
+        },
+        "logs": [
+            {"id": l.id, "action": l.action, "details": l.details}
+            for l in logs
+        ],
+    }
